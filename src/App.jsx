@@ -29,6 +29,7 @@ const createEmptyKnockoutState = () => ({
 const getTeamName = (team) => team?.name ?? 'A definir';
 
 const getChampion = (finalMatch) => finalMatch?.winner ?? null;
+const isRoundPlayed = (matches) => matches.length > 0 && matches.every((match) => match.isPlayed);
 
 function App() {
   const [groups, setGroups] = useState({});
@@ -38,6 +39,7 @@ function App() {
   const [isGroupsSimulated, setIsGroupsSimulated] = useState(false);
   const [submissionStatus, setSubmissionStatus] = useState('idle');
   const [submissionMessage, setSubmissionMessage] = useState('');
+  const [actionError, setActionError] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -45,6 +47,7 @@ function App() {
     try {
       setLoading(true);
       setError('');
+      setActionError('');
       setSubmissionStatus('idle');
       setSubmissionMessage('');
 
@@ -72,73 +75,120 @@ function App() {
       await loadTournament();
     };
 
-    initializeTournament();
+    void initializeTournament();
   }, [loadTournament]);
 
   const simulateGroupStage = () => {
-    const updatedGroups = {};
-    const updatedMatches = {};
+    try {
+      if (isGroupsSimulated) {
+        return;
+      }
 
-    GROUP_NAMES.forEach((groupName) => {
-      let rankedTeams = groups[groupName].map((team) => ({ ...team }));
+      const updatedGroups = {};
+      const updatedMatches = {};
 
-      updatedMatches[groupName] = groupMatches[groupName].map((match) => {
-        const simulatedMatch = simulateMatch(match);
+      GROUP_NAMES.forEach((groupName) => {
+        let rankedTeams = groups[groupName].map((team) => ({ ...team }));
 
-        rankedTeams = rankedTeams.map((team) => {
-          if (team.id === simulatedMatch.home.id) {
-            return updateTeamStats(team, simulatedMatch.homeGoals, simulatedMatch.awayGoals);
-          }
+        updatedMatches[groupName] = groupMatches[groupName].map((match) => {
+          const simulatedMatch = simulateMatch(match);
 
-          if (team.id === simulatedMatch.away.id) {
-            return updateTeamStats(team, simulatedMatch.awayGoals, simulatedMatch.homeGoals);
-          }
+          rankedTeams = rankedTeams.map((team) => {
+            if (team.id === simulatedMatch.home.id) {
+              return updateTeamStats(team, simulatedMatch.homeGoals, simulatedMatch.awayGoals);
+            }
 
-          return team;
+            if (team.id === simulatedMatch.away.id) {
+              return updateTeamStats(team, simulatedMatch.awayGoals, simulatedMatch.homeGoals);
+            }
+
+            return team;
+          });
+
+          return simulatedMatch;
         });
 
-        return simulatedMatch;
+        updatedGroups[groupName] = sortTeams(rankedTeams);
       });
 
-      updatedGroups[groupName] = sortTeams(rankedTeams);
-    });
-
-    setGroups(updatedGroups);
-    setGroupMatches(updatedMatches);
-    setIsGroupsSimulated(true);
+      setGroups(updatedGroups);
+      setGroupMatches(updatedMatches);
+      setIsGroupsSimulated(true);
+      setActionError('');
+    } catch (simulationError) {
+      setActionError(simulationError.message || 'Nao foi possivel simular a fase de grupos.');
+    }
   };
 
   const startKnockoutStage = () => {
-    const eighths = generateKnockoutMatches(groups);
+    try {
+      if (!isGroupsSimulated) {
+        throw new Error('Simule a fase de grupos antes de avancar para as oitavas.');
+      }
 
-    setKnockoutRounds({
-      eighths,
-      quarters: [],
-      semis: [],
-      final: [],
-    });
-    setSubmissionStatus('idle');
-    setSubmissionMessage('');
-    setCurrentPhase('eighths');
+      const eighths = generateKnockoutMatches(groups);
+
+      setKnockoutRounds({
+        eighths,
+        quarters: [],
+        semis: [],
+        final: [],
+      });
+      setSubmissionStatus('idle');
+      setSubmissionMessage('');
+      setCurrentPhase('eighths');
+      setActionError('');
+    } catch (roundError) {
+      setActionError(roundError.message || 'Nao foi possivel iniciar as oitavas de final.');
+    }
   };
 
   const advanceKnockoutRound = (roundKey, nextRoundKey) => {
-    const simulatedMatches = knockoutRounds[roundKey].map((match) => simulateKnockoutMatch(match));
+    try {
+      const currentRoundMatches = knockoutRounds[roundKey];
 
-    setKnockoutRounds((previousRounds) => {
-      const nextRounds = {
-        ...previousRounds,
-        [roundKey]: simulatedMatches,
-      };
-
-      if (nextRoundKey) {
-        nextRounds[nextRoundKey] = generateNextRound(simulatedMatches, nextRoundKey);
+      if (!currentRoundMatches.length) {
+        throw new Error('Nao ha partidas disponiveis para esta fase.');
       }
 
-      return nextRounds;
-    });
+      const simulatedMatches = currentRoundMatches.map((match) => simulateKnockoutMatch(match));
 
-    setCurrentPhase(nextRoundKey || 'champion');
+      setKnockoutRounds((previousRounds) => {
+        const nextRounds = {
+          ...previousRounds,
+          [roundKey]: simulatedMatches,
+        };
+
+        if (nextRoundKey) {
+          nextRounds[nextRoundKey] = generateNextRound(simulatedMatches, nextRoundKey);
+        }
+
+        return nextRounds;
+      });
+
+      setActionError('');
+    } catch (roundError) {
+      setActionError(roundError.message || 'Nao foi possivel simular esta fase eliminatoria.');
+    }
+  };
+
+  const goToKnockoutPhase = (nextRoundKey) => {
+    try {
+      if (!nextRoundKey) {
+        throw new Error('A proxima fase nao foi definida.');
+      }
+
+      const nextRoundMatches = knockoutRounds[nextRoundKey];
+
+      if (!nextRoundMatches.length) {
+        throw new Error('A proxima fase ainda nao foi montada.');
+      }
+
+      setCurrentPhase(nextRoundKey);
+      setActionError('');
+    } catch (roundError) {
+      setActionError(roundError.message || 'Nao foi possivel avancar para a proxima fase.');
+    }
   };
 
   const submitChampion = async (finalMatch) => {
@@ -166,24 +216,31 @@ function App() {
   };
 
   const playFinal = async () => {
-    const finalMatch = knockoutRounds.final[0];
+    try {
+      const finalMatch = knockoutRounds.final[0];
 
-    if (!finalMatch) {
-      return;
+      if (!finalMatch) {
+        throw new Error('A final ainda nao foi montada para simulacao.');
+      }
+
+      const simulatedFinal = simulateKnockoutMatch(finalMatch);
+
+        setKnockoutRounds((previousRounds) => ({
+          ...previousRounds,
+          final: [simulatedFinal],
+        }));
+        setCurrentPhase('champion');
+        setActionError('');
+        await submitChampion(simulatedFinal);
+    } catch (finalError) {
+      setSubmissionStatus('error');
+      setSubmissionMessage(finalError.message || 'Nao foi possivel simular a final.');
     }
-
-    const simulatedFinal = simulateKnockoutMatch(finalMatch);
-
-    setKnockoutRounds((previousRounds) => ({
-      ...previousRounds,
-      final: [simulatedFinal],
-    }));
-    setCurrentPhase('champion');
-    await submitChampion(simulatedFinal);
   };
 
   const currentMatches = knockoutRounds[currentPhase] ?? [];
   const champion = getChampion(knockoutRounds.final[0]);
+  const isCurrentRoundPlayed = isRoundPlayed(currentMatches);
 
   if (loading) {
     return (
@@ -255,6 +312,12 @@ function App() {
             </div>
           </div>
         </section>
+
+        {actionError && (
+          <section className="mb-5 rounded-[1.5rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-100 shadow-lg sm:mb-6">
+            {actionError}
+          </section>
+        )}
 
         {currentPhase === 'groups' && (
           <section className="space-y-6">
@@ -376,37 +439,67 @@ function App() {
 
               <div className="w-full sm:w-auto">
                 {currentPhase === 'eighths' && (
-                  <button
-                    type="button"
-                    onClick={() => advanceKnockoutRound('eighths', 'quarters')}
-                    className="min-h-12 w-full rounded-full bg-amber-400 px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] text-emerald-950 transition hover:bg-amber-300 sm:w-auto"
-                  >
-                    Simular oitavas
-                  </button>
+                  isCurrentRoundPlayed ? (
+                    <button
+                      type="button"
+                      onClick={() => goToKnockoutPhase('quarters')}
+                      className="min-h-12 w-full rounded-full border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] text-white transition hover:bg-white/15 sm:w-auto"
+                    >
+                      Ir para quartas
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => advanceKnockoutRound('eighths', 'quarters')}
+                      className="min-h-12 w-full rounded-full bg-amber-400 px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] text-emerald-950 transition hover:bg-amber-300 sm:w-auto"
+                    >
+                      Simular oitavas
+                    </button>
+                  )
                 )}
                 {currentPhase === 'quarters' && (
-                  <button
-                    type="button"
-                    onClick={() => advanceKnockoutRound('quarters', 'semis')}
-                    className="min-h-12 w-full rounded-full bg-amber-400 px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] text-emerald-950 transition hover:bg-amber-300 sm:w-auto"
-                  >
-                    Simular quartas
-                  </button>
+                  isCurrentRoundPlayed ? (
+                    <button
+                      type="button"
+                      onClick={() => goToKnockoutPhase('semis')}
+                      className="min-h-12 w-full rounded-full border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] text-white transition hover:bg-white/15 sm:w-auto"
+                    >
+                      Ir para semifinal
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => advanceKnockoutRound('quarters', 'semis')}
+                      className="min-h-12 w-full rounded-full bg-amber-400 px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] text-emerald-950 transition hover:bg-amber-300 sm:w-auto"
+                    >
+                      Simular quartas
+                    </button>
+                  )
                 )}
                 {currentPhase === 'semis' && (
-                  <button
-                    type="button"
-                    onClick={() => advanceKnockoutRound('semis', 'final')}
-                    className="min-h-12 w-full rounded-full bg-amber-400 px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] text-emerald-950 transition hover:bg-amber-300 sm:w-auto"
-                  >
-                    Simular semifinal
-                  </button>
+                  isCurrentRoundPlayed ? (
+                    <button
+                      type="button"
+                      onClick={() => goToKnockoutPhase('final')}
+                      className="min-h-12 w-full rounded-full border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] text-white transition hover:bg-white/15 sm:w-auto"
+                    >
+                      Ir para final
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => advanceKnockoutRound('semis', 'final')}
+                      className="min-h-12 w-full rounded-full bg-amber-400 px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] text-emerald-950 transition hover:bg-amber-300 sm:w-auto"
+                    >
+                      Simular semifinal
+                    </button>
+                  )
                 )}
                 {currentPhase === 'final' && (
                   <button
                     type="button"
                     onClick={playFinal}
-                    disabled={submissionStatus === 'submitting'}
+                    disabled={submissionStatus === 'submitting' || isCurrentRoundPlayed}
                     className="min-h-12 w-full rounded-full bg-amber-400 px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] text-emerald-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-amber-200 sm:w-auto"
                   >
                     {submissionStatus === 'submitting' ? 'Enviando resultado...' : 'Simular final'}
