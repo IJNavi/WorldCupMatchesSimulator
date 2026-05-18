@@ -158,6 +158,19 @@ Payload enviado na final:
 }
 ```
 
+## Configuração de arquivos sensíveis e uso da API
+
+Por questões de segurança, os arquivos que expõem a URL da API original não são versionados diretamente. Para utilizar a aplicação, siga as instruções abaixo:
+
+- Os arquivos `Prompt usado no início do projeto.txt.example`, `README.md.example` e `src/services/api.js.example` são fornecidos como exemplos.
+- Para que a aplicação funcione corretamente, você deve:
+  1. Remover o sufixo `.example` do nome do arquivo que deseja utilizar (por exemplo, renomeie `src/services/api.js.example` para `src/services/api.js`).
+  2. Substituir o placeholder `{BASE_URL}` pela URL real da API que você irá utilizar.
+- Alternativamente, você pode criar uma cópia do arquivo `.example` sem o sufixo e inserir a URL da API desejada.
+- Não compartilhe arquivos com a URL real da API em repositórios públicos.
+
+**Atenção:** Os arquivos originais que expõem a URL da API (`Prompt usado no início do projeto.txt`, `README.md`, `src/services/api.js`) estão listados no `.gitignore` para evitar exposição acidental.
+
 ## Licencas e custos
 
 Fora as duas APIs fornecidas pelo teste, o projeto usa apenas bibliotecas open source instaladas localmente via npm. Verificando os metadados das versoes instaladas em `node_modules`, todos os pacotes principais utilizados neste projeto estao sob licenca `MIT`, ou seja, sem custo de uso e sem exigencia de licenca paga para este contexto de estudo, portfolio ou uso nao comercial.

@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Ocultar arquivos que expõem a URL da API
+Prompt usado no início do projeto.txt
+README.md
+src/services/api.js
