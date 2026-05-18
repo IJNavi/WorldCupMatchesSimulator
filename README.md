@@ -1,6 +1,6 @@
 # World Cup Matches Simulator
 
-Aplicacao web desenvolvida para o processo seletivo de Estagio Desenvolvimento 2026. O projeto consome a API oficial da prova, sorteia as 32 selecoes em grupos, simula toda a Copa do Mundo e envia o resultado da final para registro do campeao.
+Aplicacao web desenvolvida para o processo seletivo de Estagio Desenvolvimento 2026. O projeto consome a API oficial da prova, sorteia as 32 selecoes em grupos, simula toda a Copa do Mundo e envia o resultado da final para registro do campeão.
 
 ## Stack
 
