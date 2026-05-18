@@ -131,7 +131,7 @@ Arquivos com docstrings relevantes:
 Base URL:
 
 ```text
-https://development-internship-api.geopostenergy.com/WorldCup
+https://{BASE_URL}/WorldCup
 ```
 
 Endpoints utilizados:
