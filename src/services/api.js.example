@@ -1,7 +1,7 @@
 // CÓPIA DE EXEMPLO - Substitua o placeholder {BASE_URL} pela URL da API real para testar o programa.
 // Para usar este arquivo, remova o sufixo .example do nome do arquivo ou crie uma cópia sem .example, remova os comentarios
 // e insira a URL da API desejada.
-// A URL original foi removida para evitar exposição da chave de acesso.
+// A URL original foi removida para evitar exposição da chave de acesso!
 
 const API_URL = 'https://{BASE_URL}/WorldCup';
 const GIT_USER = 'YourGitUser';
