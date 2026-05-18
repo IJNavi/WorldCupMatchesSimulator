@@ -128,11 +128,13 @@ Arquivos com docstrings relevantes:
 
 ## Integracao com a API
 
-Base URL:
+Substitua a URL em src/services/api.js.example pelo URL da API a ser utilizada, o placeholder é:
 
 ```text
-https://development-internship-api.geopostenergy.com/WorldCup
+https://{BASE_URL}/WorldCup
 ```
+
+Remova os comentários e renomeie o arquivo removendo .example para utilizar a aplicação.
 
 Endpoints utilizados:
 
